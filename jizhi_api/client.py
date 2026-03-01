@@ -1,6 +1,6 @@
 """
 极致了 (JiZhiLe) API 客户端
-文档参考: https://www.jizhi.vip
+文档参考: https://www.dajiala.com
 """
 
 import requests
@@ -10,22 +10,27 @@ from typing import Optional, Dict, Any
 class JiZhiClient:
     """极致了API客户端，封装所有接口调用。"""
 
-    LONG_BASE_URL = "https://www.jizhi.vip"   # 长链接（推荐）
-    SHORT_BASE_URL = "https://jzl.wiki"        # 短链接（备用，有一定延迟）
+    LONG_BASE_URL = "https://www.dajiala.com"   # 主域名（推荐）
+    SHORT_BASE_URL = "https://jzl.wiki"          # 短链接（备用，有一定延迟）
 
-    def __init__(self, key: str, addon: str, use_long_link: bool = True, timeout: int = 30):
+    def __init__(self, key: str, addon: str, use_long_link: bool = True, timeout: int = 30, base_url: Optional[str] = None):
         """
         初始化客户端。
 
         Args:
             key:           API Key，例如 'JZL95ad9ef74f4d8371'
-            addon:         附加码，例如 'syqabcd'
-            use_long_link: 是否使用长链接（推荐），默认 True
+            addon:         附加码（verifycode），例如 'syqabcd'
+            use_long_link: 是否使用长链接（推荐），默认 True；当 base_url 指定时忽略
             timeout:       请求超时秒数，默认 30
+            base_url:      自定义基础URL，例如 JiZhiClient.DAJIALA_BASE_URL；
+                           指定后覆盖 use_long_link 设置
         """
         self.key = key
         self.addon = addon
-        self.base_url = self.LONG_BASE_URL if use_long_link else self.SHORT_BASE_URL
+        if base_url is not None:
+            self.base_url = base_url.rstrip("/")
+        else:
+            self.base_url = self.LONG_BASE_URL if use_long_link else self.SHORT_BASE_URL
         self.timeout = timeout
         self.session = requests.Session()
         self.session.headers.update({"Content-Type": "application/json"})
@@ -35,14 +40,14 @@ class JiZhiClient:
     # ------------------------------------------------------------------ #
 
     def _post(self, path: str, payload: Dict[str, Any]) -> Dict:
-        payload.update({"key": self.key, "addon": self.addon})
+        payload.update({"key": self.key, "verifycode": self.addon})
         url = self.base_url + path
         resp = self.session.post(url, json=payload, timeout=self.timeout)
         resp.raise_for_status()
         return resp.json()
 
     def _get(self, path: str, params: Dict[str, Any]) -> Dict:
-        params.update({"key": self.key, "addon": self.addon})
+        params.update({"key": self.key, "verifycode": self.addon})
         url = self.base_url + path
         resp = self.session.get(url, params=params, timeout=self.timeout)
         resp.raise_for_status()
@@ -197,16 +202,36 @@ class JiZhiClient:
         """获取文章详情Pro。0.045元/次"""
         return self._post("/fbmain/monitor/v3/article_detail", {"url": url})
 
-    def search_article_by_keyword(self, keyword: str, page: int = 1, mode: str = "keyword") -> Dict:
+    def search_article_by_keyword(
+        self,
+        period: int = 7,
+        kw: Optional[str] = None,
+        any_kw: Optional[str] = None,
+        ex_kw: Optional[str] = None,
+        sort_type: int = 1,
+        mode: int = 1,
+        page: int = 1,
+    ) -> Dict:
         """
-        关键词/分词搜索微信文章（数据库）。0.02元/条。
-        mode: 'keyword' 精确关键词 | 'segment' 分词
+        关键词搜索微信文章（数据库）。0.02元/条。
+
+        Args:
+            period:    时间范围天数，1-720，必填，默认7
+            kw:        全部匹配关键词，支持空格分隔多词
+            any_kw:    任意匹配关键词，支持空格分隔多词
+            ex_kw:     排除关键词，支持空格分隔多词
+            sort_type: 1=按阅读数排序  2=按时间排序
+            mode:      1=搜标题  2=搜正文  3=标题+正文（正文时period最大30）
+            page:      页码，1-100，每页20条
         """
-        return self._post("/fbmain/monitor/v3/kw_search", {
-            "keyword": keyword,
-            "page": page,
-            "mode": mode,
-        })
+        payload: Dict[str, Any] = {"period": period, "sort_type": sort_type, "mode": mode, "page": page}
+        if kw is not None:
+            payload["kw"] = kw
+        if any_kw is not None:
+            payload["any_kw"] = any_kw
+        if ex_kw is not None:
+            payload["ex_kw"] = ex_kw
+        return self._post("/fbmain/monitor/v3/kw_search", payload)
 
     # ------------------------------------------------------------------ #
     #  公众号信息

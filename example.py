@@ -49,7 +49,11 @@ def main():
     # ── 5. 关键词搜索文章（0.02元/条）─────────────────────────────────
     # print("=" * 60)
     # print("5. 关键词搜索文章")
-    # result = client.search_article_by_keyword("人工智能", page=1)
+    # result = client.search_article_by_keyword(kw="人工智能", period=7, page=1)
+    # pp(result)
+    #
+    # # 多条件搜索示例：标题含"AI"且不含"广告"，按时间排序，最近30天
+    # result = client.search_article_by_keyword(kw="AI", ex_kw="广告", period=30, sort_type=2, mode=1)
     # pp(result)
 
     # ── 6. 获取视频号作品列表（0.2元/次）──────────────────────────────
