@@ -114,6 +114,23 @@ def main():
     print(f"  输出: {output_path.resolve()}")
     print("=" * 60)
 
+    # ── 打印可读摘要（贴到对话框用）─────────────────────────────
+    print(f"\n📋 结果摘要（过去 {PERIOD} 天）\n")
+    for kw in KEYWORDS:
+        kw_rows = [r for r in all_rows if r["search_keyword"] == kw]
+        print(f"【{kw}】{len(kw_rows)} 篇")
+        for r in kw_rows:
+            date = r.get("publish_time_str", "")[:10]
+            title = r.get("title", "").strip()[:40]
+            source = r.get("wx_name", "").strip()[:15]
+            read = r.get("read", "")
+            url = r.get("url", "").strip()
+            print(f"  {date}  {source}  阅读{read}  {title}")
+            print(f"         {url}")
+        if not kw_rows:
+            print("  （无结果）")
+        print()
+
 
 if __name__ == "__main__":
     main()
